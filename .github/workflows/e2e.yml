@@ -10,7 +10,8 @@ jobs:
       - name: Clean workspace before checkout
         run: |
           if (Test-Path "${{ github.workspace }}") {
-            Remove-Item -Path "${{ github.workspace }}\*" -Recurse -Force -ErrorAction SilentlyContinue
+            cmd /c "rmdir /s /q `"${{ github.workspace }}`"" 2>$null
+            New-Item -ItemType Directory -Path "${{ github.workspace }}" -Force | Out-Null
           }
 
       - uses: actions/checkout@v4
@@ -54,6 +55,6 @@ jobs:
         run: pip install -r selenium/requirements.txt
 
       - name: Run E2E tests (visible browser)
-        run: python -m pytest selenium/ -v --tb=short
+        run: python -m pytest selenium/ -v --tb=short -p no:cacheprovider
         env:
           APP_URL: http://localhost:3000

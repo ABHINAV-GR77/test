@@ -15,7 +15,11 @@ jobs:
         working-directory: backend
     steps:
       - name: Clean workspace
-        run: if (Test-Path "${{ github.workspace }}") { Remove-Item "${{ github.workspace }}\*" -Recurse -Force -ErrorAction SilentlyContinue }
+        run: |
+          if (Test-Path "${{ github.workspace }}") {
+            cmd /c "rmdir /s /q `"${{ github.workspace }}`"" 2>$null
+            New-Item -ItemType Directory -Path "${{ github.workspace }}" -Force | Out-Null
+          }
         working-directory: .
 
       - uses: actions/checkout@v4
@@ -42,7 +46,11 @@ jobs:
         working-directory: frontend
     steps:
       - name: Clean workspace
-        run: if (Test-Path "${{ github.workspace }}") { Remove-Item "${{ github.workspace }}\*" -Recurse -Force -ErrorAction SilentlyContinue }
+        run: |
+          if (Test-Path "${{ github.workspace }}") {
+            cmd /c "rmdir /s /q `"${{ github.workspace }}`"" 2>$null
+            New-Item -ItemType Directory -Path "${{ github.workspace }}" -Force | Out-Null
+          }
         working-directory: .
 
       - uses: actions/checkout@v4
@@ -69,7 +77,11 @@ jobs:
     needs: [backend-test, frontend-test]
     steps:
       - name: Clean workspace
-        run: if (Test-Path "${{ github.workspace }}") { Remove-Item "${{ github.workspace }}\*" -Recurse -Force -ErrorAction SilentlyContinue }
+        run: |
+          if (Test-Path "${{ github.workspace }}") {
+            cmd /c "rmdir /s /q `"${{ github.workspace }}`"" 2>$null
+            New-Item -ItemType Directory -Path "${{ github.workspace }}" -Force | Out-Null
+          }
 
       - uses: actions/checkout@v4
         with:
@@ -102,7 +114,11 @@ jobs:
     needs: [docker-build]
     steps:
       - name: Clean workspace
-        run: if (Test-Path "${{ github.workspace }}") { Remove-Item "${{ github.workspace }}\*" -Recurse -Force -ErrorAction SilentlyContinue }
+        run: |
+          if (Test-Path "${{ github.workspace }}") {
+            cmd /c "rmdir /s /q `"${{ github.workspace }}`"" 2>$null
+            New-Item -ItemType Directory -Path "${{ github.workspace }}" -Force | Out-Null
+          }
 
       - uses: actions/checkout@v4
         with:
