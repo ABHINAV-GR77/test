@@ -1,0 +1,51 @@
+name: E2E Selenium Tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  e2e-tests:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Mark workspace as safe directory
+        run: git config --global --add safe.directory "${{ github.workspace }}"
+
+      - name: Ensure services are running
+        run: |
+          $ErrorActionPreference = 'SilentlyContinue'
+          docker-compose up --build -d 2>&1 | Out-Default
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Wait for application to be healthy
+        run: |
+          $maxRetries = 12
+          for ($i = 1; $i -le $maxRetries; $i++) {
+            try {
+              $response = Invoke-WebRequest -Uri http://localhost:8000/api/health -UseBasicParsing -TimeoutSec 5
+              if ($response.StatusCode -eq 200) {
+                Write-Host "Backend healthy after $i attempts"
+                break
+              }
+            } catch {
+              Write-Host "Attempt $i/$maxRetries - waiting for backend..."
+              Start-Sleep -Seconds 5
+            }
+            if ($i -eq $maxRetries) {
+              Write-Host "Backend not healthy after $maxRetries attempts"
+              docker-compose logs backend
+              exit 1
+            }
+          }
+          # Verify frontend
+          $fe = Invoke-WebRequest -Uri http://localhost:3000 -UseBasicParsing -TimeoutSec 5
+          if ($fe.StatusCode -eq 200) { Write-Host "Frontend is reachable" } else { exit 1 }
+
+      - name: Install Selenium dependencies
+        run: pip install -r selenium/requirements.txt
+
+      - name: Run E2E tests (visible browser)
+        run: python -m pytest selenium/ -v --tb=short
+        env:
+          APP_URL: http://localhost:3000
