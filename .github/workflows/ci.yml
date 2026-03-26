@@ -9,7 +9,7 @@ on:
 jobs:
   # ── Backend Tests ────────────────────────────────────
   backend-test:
-    runs-on: self-hosted
+    runs-on: [self-hosted, windows]
     defaults:
       run:
         working-directory: backend
@@ -32,15 +32,18 @@ jobs:
       - name: Verify Python
         run: python --version
 
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt
 
       - name: Run unit tests
         run: python -m pytest tests/ -v --tb=short
 
   # ── Frontend Tests ───────────────────────────────────
   frontend-test:
-    runs-on: self-hosted
+    runs-on: [self-hosted, windows]
     defaults:
       run:
         working-directory: frontend
@@ -65,6 +68,9 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Verify Node
+        run: node --version
+
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
@@ -73,7 +79,7 @@ jobs:
 
   # ── Docker Build ─────────────────────────────────────
   docker-build:
-    runs-on: self-hosted
+    runs-on: [self-hosted, windows]
     needs: [backend-test, frontend-test]
     steps:
       - name: Clean locked files
@@ -92,15 +98,11 @@ jobs:
 
       - name: Build backend image
         run: |
-          $ErrorActionPreference = 'SilentlyContinue'
-          docker build -t student-app-backend:${{ github.sha }} ./backend 2>&1 | Out-Default
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          docker build -t student-app-backend:${{ github.sha }} ./backend
 
       - name: Build frontend image
         run: |
-          $ErrorActionPreference = 'SilentlyContinue'
-          docker build -t student-app-frontend:${{ github.sha }} ./frontend 2>&1 | Out-Default
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          docker build -t student-app-frontend:${{ github.sha }} ./frontend
 
       - name: Verify images
         run: docker images | Select-String "student-app"
@@ -110,7 +112,7 @@ jobs:
 
   # ── Deploy ───────────────────────────────────────────
   deploy:
-    runs-on: self-hosted
+    runs-on: [self-hosted, windows]
     needs: [docker-build]
     steps:
       - name: Clean locked files
@@ -127,22 +129,17 @@ jobs:
       - name: Mark workspace as safe directory
         run: git config --global --add safe.directory "${{ github.workspace }}"
 
-      - name: Stop existing containers (preserve volumes)
-        run: |
-          $ErrorActionPreference = 'SilentlyContinue'
-          docker-compose down 2>&1 | Out-Default
+      - name: Stop existing containers
+        run: docker compose down
         continue-on-error: true
 
       - name: Start services with fresh build
-        run: |
-          $ErrorActionPreference = 'SilentlyContinue'
-          docker-compose up --build -d 2>&1 | Out-Default
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        run: docker compose up --build -d
 
       - name: Wait for services to be healthy
         run: |
-          Start-Sleep -Seconds 15
-          docker-compose ps
+          Start-Sleep -Seconds 30
+          docker compose ps
 
       - name: Verify application health
         run: |
